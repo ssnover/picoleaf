@@ -1,6 +1,6 @@
-use serde::Deserialize;
 use serde_json::json;
 use std::path::PathBuf;
+use casita::leap::{self, CommuniqueType};
 
 mod config;
 
@@ -42,26 +42,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct LeapMessage {
-    CommuniqueType: String,
-    Header: Header,
-    Body: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Header {
-    StatusCode: String,
-    Url: String,
-}
-
 async fn read_not_ping(
     client: &mut casita::Client,
-) -> Result<LeapMessage, Box<dyn std::error::Error>> {
+) -> Result<leap::Message, Box<dyn std::error::Error>> {
     loop {
         let msg = client.read_message().await?;
-        if let Ok(msg) = serde_json::from_value::<LeapMessage>(msg) {
-            if msg.Header.Url == "/device/status/deviceheard" {
+        if let Ok(msg) = serde_json::from_value::<leap::Message>(msg) {
+            if msg.header.url == "/device/status/deviceheard" {
                 continue;
             } else {
                 return Ok(msg);
@@ -80,12 +67,12 @@ async fn subscribe_to_button_events(
             "Url": "/device"
         },
     });
-    client.send(request_devices).await?;
+    client.send_raw(request_devices).await?;
 
     let devices = loop {
         let response = read_not_ping(client).await?;
-        if response.CommuniqueType == "ReadResponse" && response.Header.Url == "/device" {
-            if let Some(body) = response.Body {
+        if response.communique_type == CommuniqueType::ReadResponse && response.header.url == "/device" {
+            if let Some(body) = response.body {
                 let devices = body["Devices"].as_array().unwrap().clone();
                 let device_hrefs = devices
                     .iter()
@@ -107,11 +94,11 @@ async fn subscribe_to_button_events(
                 "Url": url,
             },
         });
-        client.send(request).await?;
+        client.send_raw(request).await?;
         let button_hrefs: Vec<String> = loop {
             let response = read_not_ping(client).await?;
-            if response.CommuniqueType == "ReadResponse" && response.Header.Url == url {
-                if let Some(body) = response.Body {
+            if response.communique_type == CommuniqueType::ReadResponse && response.header.url == url {
+                if let Some(body) = response.body {
                     break body["ButtonGroups"][0]["Buttons"]
                         .as_array()
                         .unwrap()
@@ -126,13 +113,7 @@ async fn subscribe_to_button_events(
 
     for href in all_button_hrefs {
         let href = format!("{}/status/event", href);
-        let request = json!({
-            "CommuniqueType": "SubscribeRequest",
-            "Header": {
-                "ClientTag": "picoleaf",
-                "Url": href,
-            },
-        });
+        let request = leap::Message::new(CommuniqueType::SubscribeRequest, href);
         client.send(request).await?;
     }
 
@@ -147,8 +128,8 @@ async fn handle_button_events(
     let mut current_effect_idx = 0;
     loop {
         let msg = read_not_ping(caseta).await?;
-        if msg.CommuniqueType == "UpdateResponse" && msg.Header.StatusCode == "200 OK" {
-            let body = msg.Body.unwrap();
+        if msg.communique_type == CommuniqueType::UpdateResponse && msg.header.status_code.unwrap() == "200 OK" {
+            let body = msg.body.unwrap();
             let href = body["ButtonStatus"]["Button"]["href"]
                 .as_str()
                 .unwrap()
