@@ -65,7 +65,9 @@ async fn read_not_ping(
     }
 }
 
-async fn subscribe_to_button_events(client: &mut casita::Client) -> Result<(), Box<dyn std::error::Error>> {
+async fn subscribe_to_button_events(
+    client: &mut casita::Client,
+) -> Result<(), Box<dyn std::error::Error>> {
     let request_devices = json!({
         "CommuniqueType": "ReadRequest",
         "Header": {
@@ -80,7 +82,11 @@ async fn subscribe_to_button_events(client: &mut casita::Client) -> Result<(), B
         if response.CommuniqueType == "ReadResponse" && response.Header.Url == "/device" {
             if let Some(body) = response.Body {
                 let devices = body["Devices"].as_array().unwrap().clone();
-                let device_hrefs = devices.iter().filter(|dev| dev["DeviceType"] == "Pico3ButtonRaiseLower").map(|dev| dev["href"].as_str().unwrap().to_owned()).collect::<Vec<String>>();
+                let device_hrefs = devices
+                    .iter()
+                    .filter(|dev| dev["DeviceType"] == "Pico3ButtonRaiseLower")
+                    .map(|dev| dev["href"].as_str().unwrap().to_owned())
+                    .collect::<Vec<String>>();
                 break device_hrefs;
             }
         }
@@ -101,7 +107,12 @@ async fn subscribe_to_button_events(client: &mut casita::Client) -> Result<(), B
             let response = read_not_ping(client).await?;
             if response.CommuniqueType == "ReadResponse" && response.Header.Url == url {
                 if let Some(body) = response.Body {
-                    break body["ButtonGroups"][0]["Buttons"].as_array().unwrap().iter().map(|val| val["href"].as_str().unwrap().to_owned()).collect();
+                    break body["ButtonGroups"][0]["Buttons"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|val| val["href"].as_str().unwrap().to_owned())
+                        .collect();
                 }
             }
         };
@@ -123,21 +134,50 @@ async fn subscribe_to_button_events(client: &mut casita::Client) -> Result<(), B
     Ok(())
 }
 
-async fn handle_button_events(caseta: &mut casita::Client, aurora: & borealis::Aurora<'_>) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_button_events(
+    caseta: &mut casita::Client,
+    aurora: &borealis::Aurora<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let effects = aurora.get_effects().await?;
+    let mut current_effect_idx = 0;
     loop {
         let msg = read_not_ping(caseta).await?;
         if msg.CommuniqueType == "UpdateResponse" && msg.Header.StatusCode == "200 OK" {
             let body = msg.Body.unwrap();
-            let href = body["ButtonStatus"]["Button"]["href"].as_str().unwrap().to_owned();
+            let href = body["ButtonStatus"]["Button"]["href"]
+                .as_str()
+                .unwrap()
+                .to_owned();
             let id = href.split("/").last().unwrap().parse::<u32>().unwrap();
-            if body["ButtonStatus"]["ButtonEvent"]["EventType"].as_str().unwrap() == "Release" {
+            if body["ButtonStatus"]["ButtonEvent"]["EventType"]
+                .as_str()
+                .unwrap()
+                == "Release"
+            {
                 if id == 111 {
                     aurora.turn_on().await?;
+                    aurora.set_effect("Working").await?;
+                } else if id == 112 {
+                    aurora.turn_on().await?;
+                    aurora.set_effect("Hot Romance").await?;
                 } else if id == 113 {
                     aurora.turn_off().await?;
+                } else if id == 114 {
+                    if current_effect_idx == effects.len() - 1 {
+                        current_effect_idx = 0;
+                    } else {
+                        current_effect_idx += 1;
+                    }
+                    aurora.set_effect(&effects[current_effect_idx]).await?;
+                } else if id == 115 {
+                    if current_effect_idx == 0 {
+                        current_effect_idx = effects.len() - 1;
+                    } else {
+                        current_effect_idx -= 1;
+                    }
+                    aurora.set_effect(&effects[current_effect_idx]).await?;
                 }
             }
-
         }
     }
 }
