@@ -1,6 +1,6 @@
+use serde::Deserialize;
 use std::fs::File;
 use std::io::{self, Read};
-use serde::Deserialize;
 
 pub fn load_config_from_path(path: &str) -> io::Result<Config> {
     let mut reader = io::BufReader::new(File::open(path)?);

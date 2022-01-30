@@ -1,12 +1,15 @@
+use casita::leap::{self, CommuniqueType};
 use serde_json::json;
 use std::path::PathBuf;
-use casita::leap::{self, CommuniqueType};
 
 mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_path = std::env::args().nth(1).unwrap_or_else(|| {eprintln!("Forgot your config file"); std::process::exit(1); });
+    let config_path = std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("Forgot your config file");
+        std::process::exit(1);
+    });
     let config = config::load_config_from_path(&config_path)?;
 
     let certs = casita::Certs::new(
@@ -15,7 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         PathBuf::from(config.caseta.key_path),
     )?;
     let mut client = casita::Client::new(certs, format!("{}:8081", config.caseta.address)).await;
-    let aurora = borealis::Aurora::new(format!("{}:16021", config.aurora.address), &config.aurora.token)?;
+    let aurora = borealis::Aurora::new(
+        format!("{}:16021", config.aurora.address),
+        &config.aurora.token,
+    )?;
 
     loop {
         loop {
@@ -71,7 +77,9 @@ async fn subscribe_to_button_events(
 
     let devices = loop {
         let response = read_not_ping(client).await?;
-        if response.communique_type == CommuniqueType::ReadResponse && response.header.url == "/device" {
+        if response.communique_type == CommuniqueType::ReadResponse
+            && response.header.url == "/device"
+        {
             if let Some(body) = response.body {
                 let devices = body["Devices"].as_array().unwrap().clone();
                 let device_hrefs = devices
@@ -97,7 +105,9 @@ async fn subscribe_to_button_events(
         client.send_raw(request).await?;
         let button_hrefs: Vec<String> = loop {
             let response = read_not_ping(client).await?;
-            if response.communique_type == CommuniqueType::ReadResponse && response.header.url == url {
+            if response.communique_type == CommuniqueType::ReadResponse
+                && response.header.url == url
+            {
                 if let Some(body) = response.body {
                     break body["ButtonGroups"][0]["Buttons"]
                         .as_array()
@@ -128,7 +138,9 @@ async fn handle_button_events(
     let mut current_effect_idx = 0;
     loop {
         let msg = read_not_ping(caseta).await?;
-        if msg.communique_type == CommuniqueType::UpdateResponse && msg.header.status_code.unwrap() == "200 OK" {
+        if msg.communique_type == CommuniqueType::UpdateResponse
+            && msg.header.status_code.unwrap() == "200 OK"
+        {
             let body = msg.body.unwrap();
             let href = body["ButtonStatus"]["Button"]["href"]
                 .as_str()
