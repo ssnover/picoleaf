@@ -66,14 +66,8 @@ async fn read_not_ping(
 async fn subscribe_to_button_events(
     client: &mut casita::Client,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let request_devices = json!({
-        "CommuniqueType": "ReadRequest",
-        "Header": {
-            "ClientTag": "picoleaf",
-            "Url": "/device"
-        },
-    });
-    client.send_raw(request_devices).await?;
+    let request_devices = leap::Message::new(CommuniqueType::ReadRequest, "/device".to_owned());
+    client.send(request_devices).await?;
 
     let devices = loop {
         let response = read_not_ping(client).await?;
@@ -95,14 +89,8 @@ async fn subscribe_to_button_events(
     let mut all_button_hrefs = vec![];
     for device in devices {
         let url = format!("{}/buttongroup", device);
-        let request = json!({
-            "CommuniqueType": "ReadRequest",
-            "Header": {
-                "ClientTag": "picoleaf",
-                "Url": url,
-            },
-        });
-        client.send_raw(request).await?;
+        let request = leap::Message::new(CommuniqueType::ReadRequest, url.clone());
+        client.send(request).await?;
         let button_hrefs: Vec<String> = loop {
             let response = read_not_ping(client).await?;
             if response.communique_type == CommuniqueType::ReadResponse
