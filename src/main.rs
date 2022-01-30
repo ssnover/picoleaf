@@ -2,15 +2,20 @@ use serde::Deserialize;
 use serde_json::json;
 use std::path::PathBuf;
 
+mod config;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config_path = std::env::args().nth(1).unwrap_or_else(|| {eprintln!("Forgot your config file"); std::process::exit(1); });
+    let config = config::load_config_from_path(&config_path)?;
+
     let certs = casita::Certs::new(
-        PathBuf::from("./caseta-bridge.crt"),
-        PathBuf::from("./caseta.crt"),
-        PathBuf::from("./caseta.key"),
+        PathBuf::from(config.caseta.ca_cert_path),
+        PathBuf::from(config.caseta.cert_path),
+        PathBuf::from(config.caseta.key_path),
     )?;
-    let mut client = casita::Client::new(certs, "192.168.1.11:8081".to_owned()).await;
-    let aurora = borealis::Aurora::new("192.168.1.9:16021", "BOFh48Ur75qMmRfVUx8GREsNkdaJgjA3")?;
+    let mut client = casita::Client::new(certs, format!("{}:8081", config.caseta.address)).await;
+    let aurora = borealis::Aurora::new(format!("{}:16021", config.aurora.address), &config.aurora.token)?;
 
     loop {
         loop {

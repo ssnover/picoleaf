@@ -1,0 +1,12 @@
+{
+    "caseta": {
+        "ca_cert_path": "/home/ssnover/.picoleaf/caseta-bridge.crt",
+        "cert_path": "/home/ssnover/.picoleaf/caseta.crt",
+        "key_path": "/home/ssnover/.picoleaf/caseta.key",
+        "address": "192.168.1.11"
+    },
+    "aurora": {
+        "address": "192.168.1.9",
+        "token": "BOFh48Ur75qMmRfVUx8GREsNkdaJgjA3"
+    }
+}
