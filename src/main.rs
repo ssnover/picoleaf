@@ -1,5 +1,4 @@
 use casita::leap::{self, CommuniqueType};
-use serde_json::json;
 use std::path::PathBuf;
 
 mod config;

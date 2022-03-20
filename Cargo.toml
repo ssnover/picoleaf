@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-channel = "1.6"
+async-trait = "0.1.52"
 borealis = { path = "../borealis" }
 casita = { path = "../casita" }
 serde = { version = "1.0", features = ["derive"] }
