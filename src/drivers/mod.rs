@@ -21,13 +21,17 @@ pub enum DriverType {
     IpcSocket = 3,
 }
 
-pub fn start_driver(driver: DriverType, cfg: &Config) -> (Sender<Command>, Receiver<Event>) {
+pub async fn start_driver(driver: DriverType, cfg: &Config) -> (Sender<Command>, Receiver<Event>) {
     // create channels, tokio spawn
     let (cmd_tx, cmd_rx) = async_channel::unbounded::<Command>();
     let (evt_tx, evt_rx) = async_channel::unbounded::<Event>();
 
     let driver: Box<dyn Driver + Send + Sync> = match driver {
-        DriverType::Lutron => Box::new(CasetaDriver::new(cmd_rx, evt_tx, &cfg.caseta)),
+        DriverType::Lutron => Box::new(
+            CasetaDriver::new(cmd_rx, evt_tx, &cfg.caseta)
+                .await
+                .unwrap(),
+        ),
         _ => {
             unimplemented!()
         }

@@ -8,7 +8,8 @@ pub enum EventSource {
 }
 
 pub enum EventType {
-    ButtonPress(u32),
+    ButtonPress(DeviceId),
+    Disconnected(drivers::DriverType),
 }
 
 pub struct Event {
@@ -20,7 +21,7 @@ pub enum Command {
     Connect,
     Disconnect,
     Reconnect,
-    Enable(u32),
-    Disable(u32),
-    Display(u32, String),
+    Enable(DeviceId),
+    Disable(DeviceId),
+    Display(DeviceId, String),
 }

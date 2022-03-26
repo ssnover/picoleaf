@@ -1071,6 +1071,7 @@ dependencies = [
  "async-trait",
  "borealis",
  "casita",
+ "log",
  "serde",
  "serde_json",
  "tokio",

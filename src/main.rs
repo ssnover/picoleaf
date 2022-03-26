@@ -74,7 +74,7 @@ async fn subscribe_to_button_events(
             && response.header.url == "/device"
         {
             if let Some(body) = response.body {
-                let devices = body["Devices"].as_array().unwrap().clone();
+                let devices = body.as_raw()["Devices"].as_array().unwrap().clone();
                 let device_hrefs = devices
                     .iter()
                     .filter(|dev| dev["DeviceType"] == "Pico3ButtonRaiseLower")
@@ -96,7 +96,7 @@ async fn subscribe_to_button_events(
                 && response.header.url == url
             {
                 if let Some(body) = response.body {
-                    break body["ButtonGroups"][0]["Buttons"]
+                    break body.as_raw()["ButtonGroups"][0]["Buttons"]
                         .as_array()
                         .unwrap()
                         .iter()
@@ -128,39 +128,50 @@ async fn handle_button_events(
         if msg.communique_type == CommuniqueType::UpdateResponse
             && msg.header.status_code.unwrap() == "200 OK"
         {
-            let body = msg.body.unwrap();
-            let href = body["ButtonStatus"]["Button"]["href"]
-                .as_str()
-                .unwrap()
-                .to_owned();
-            let id = href.split("/").last().unwrap().parse::<u32>().unwrap();
-            if body["ButtonStatus"]["ButtonEvent"]["EventType"]
-                .as_str()
-                .unwrap()
-                == "Release"
-            {
-                if id == 111 {
+            let button_id = match msg.body.unwrap() {
+                leap::Body::ButtonStatusReport(button_status) => {
+                    let href = button_status.button_status.button.href;
+                    let id = href.split("/").last().unwrap().parse::<u32>().unwrap();
+                    match button_status.button_status.button_event.event_type {
+                        leap::ButtonEventType::Release => id,
+                        _ => continue,
+                    }
+                }
+                _ => continue,
+            };
+            match button_id {
+                111 => {
                     aurora.turn_on().await?;
                     aurora.set_effect("Working").await?;
-                } else if id == 112 {
+                }
+                112 => {
                     aurora.turn_on().await?;
                     aurora.set_effect("Hot Romance").await?;
-                } else if id == 113 {
+                }
+                113 => {
                     aurora.turn_off().await?;
-                } else if id == 114 {
+                }
+                114 => {
                     if current_effect_idx == effects.len() - 1 {
                         current_effect_idx = 0;
                     } else {
                         current_effect_idx += 1;
                     }
                     aurora.set_effect(&effects[current_effect_idx]).await?;
-                } else if id == 115 {
+                }
+                115 => {
                     if current_effect_idx == 0 {
                         current_effect_idx = effects.len() - 1;
                     } else {
                         current_effect_idx -= 1;
                     }
                     aurora.set_effect(&effects[current_effect_idx]).await?;
+                }
+                _ => {
+                    log::info!(
+                        "Received unhandled expected button event for button id {}",
+                        button_id
+                    );
                 }
             }
         }
